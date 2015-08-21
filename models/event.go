@@ -192,7 +192,7 @@ func (e *Event) Build() {
 		cmd.Stderr = bufErr
 
 		if err = cmd.Run(); err != nil {
-			fmt.Println(bufErr.String())
+			fmt.Println(bufOut.String(), bufErr.String())
 			e.setError(fmt.Sprintf("Event.Build.(get dependencies): %s", bufErr.String()))
 			return
 		}
@@ -207,7 +207,7 @@ func (e *Event) Build() {
 		cmd.Stderr = bufErr
 
 		if err = cmd.Run(); err != nil {
-			fmt.Println(bufErr.String())
+			fmt.Println(bufOut.String(), bufErr.String())
 			e.setError(fmt.Sprintf("Event.Build.(build target): %s", bufErr.String()))
 			return
 		}
