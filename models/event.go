@@ -164,7 +164,7 @@ func (e *Event) Build() {
 			e.setError(fmt.Sprintf("Event.Build.(read local path info): local path does not contain expected file"))
 			return
 		}
-		// fmt.Println(dirName)
+		fmt.Println(dirName)
 
 		srcPath := path.Join(localPath, name)
 		if err = os.Rename(path.Join(localPath, dirName), srcPath); err != nil {
