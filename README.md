@@ -6,6 +6,7 @@ Cgx(Continuous Go Cross-compiler) is a real-time cross-compiler for your Go apps
 
 - Running environment must install Go 1.5 or higher.
 - Only support repositories that are hosted on GitHub.
+- Does not support CGO.
 
 ## License
 

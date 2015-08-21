@@ -15,6 +15,7 @@
 package models
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"os"
@@ -163,7 +164,7 @@ func (e *Event) Build() {
 			e.setError(fmt.Sprintf("Event.Build.(read local path info): local path does not contain expected file"))
 			return
 		}
-		fmt.Println(dirName)
+		// fmt.Println(dirName)
 
 		srcPath := path.Join(localPath, name)
 		if err = os.Rename(path.Join(localPath, dirName), srcPath); err != nil {
@@ -171,45 +172,44 @@ func (e *Event) Build() {
 			return
 		}
 
-		envs := []string{
-			"PATH=" + os.Getenv("PATH"),
-			"GOROOT=" + os.Getenv("GOROOT"),
+		envs := append([]string{
 			"GOPATH=" + setting.GOPATH,
 			"GOOS=" + target.GOOS,
 			"GOARCH=" + target.GOARCH,
 			"GOARM=" + target.GOARM,
-			"CGO_ENABLED=1",
-		}
+		}, os.Environ()...)
 		tags := setting.Cfg.Section("tags." + target.GOOS).Key("TAGS").MustString("")
+
+		bufOut := new(bytes.Buffer)
+		bufErr := new(bytes.Buffer)
 
 		log.Debug("Getting dependencies: %s", e.targetString(target))
 		cmd := exec.Command("go", "get", "-v", "-tags", tags)
 		cmd.Env = envs
 
 		cmd.Dir = srcPath
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = bufOut
+		cmd.Stderr = bufErr
 
 		if err = cmd.Run(); err != nil {
-			e.setError(fmt.Sprintf("Event.Build.(get dependencies): %v", err))
+			e.setError(fmt.Sprintf("Event.Build.(get dependencies): %s", bufErr.String()))
 			return
 		}
-
-		// bufOut := new(bytes.Buffer)
-		// bufErr := new(bytes.Buffer)
+		bufOut.Reset()
 
 		log.Debug("Building target: %s", e.targetString(target))
 		cmd = exec.Command("go", "build", "-v", "-tags", tags)
 		cmd.Env = envs
 
 		cmd.Dir = srcPath
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = bufOut
+		cmd.Stderr = bufErr
 
 		if err = cmd.Run(); err != nil {
-			e.setError(fmt.Sprintf("Event.Build.(build target): %v", err))
+			e.setError(fmt.Sprintf("Event.Build.(build target): %s", bufErr.String()))
 			return
 		}
+		bufOut.Reset()
 
 		if err = e.packTarget(srcPath, name, setting.ArchivePath, target); err != nil {
 			e.setError(fmt.Sprintf("Event.Build.packTarget: %v", err))
