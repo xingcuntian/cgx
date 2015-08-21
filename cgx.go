@@ -38,6 +38,9 @@ func main() {
 	log.Info("Run Mode: %s", strings.Title(macaron.Env))
 
 	m := macaron.Classic()
+	m.Use(macaron.Static("data/archive", macaron.StaticOptions{
+		Prefix: "/archive",
+	}))
 	m.Use(macaron.Renderer())
 	m.Use(middleware.Contexter())
 
