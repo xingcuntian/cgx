@@ -22,3 +22,9 @@ _testmain.go
 *.exe
 *.test
 *.prof
+cgx
+cgx.sublime-project
+cgx.sublime-workspace
+data
+custom
+gopath

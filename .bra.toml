@@ -1,0 +1,17 @@
+[run]
+init_cmds = [
+	["./cgx", "web"]
+]
+watch_all = true
+watch_dirs = [
+	"$WORKDIR/routers",
+	"$WORKDIR/models",
+	"$WORKDIR/modules"
+]
+watch_exts = [".go"]
+build_delay = 1500
+cmds = [
+	["go", "install"],
+	["go", "build"],
+	["./cgx"]
+]
