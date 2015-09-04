@@ -121,7 +121,16 @@ func (e *Event) packTarget(srcPath, name, destDir string, target setting.Target)
 
 	// Pack resources.
 	for _, resName := range setting.Resources {
-		os.Rename(path.Join(srcPath, resName), path.Join(packPath, resName))
+		resPath := path.Join(srcPath, resName)
+		destPath := path.Join(packPath, resName)
+		if com.IsDir(resPath) {
+			err = com.CopyDir(resPath, destPath)
+		} else {
+			err = com.Copy(resPath, destPath)
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	if err = zip.PackTo(targetPath, zipPath); err != nil {
