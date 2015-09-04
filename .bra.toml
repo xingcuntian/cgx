@@ -4,7 +4,6 @@ init_cmds = [
 ]
 watch_all = true
 watch_dirs = [
-	"$WORKDIR/routers",
 	"$WORKDIR/models",
 	"$WORKDIR/modules"
 ]

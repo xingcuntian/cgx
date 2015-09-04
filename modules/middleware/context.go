@@ -43,6 +43,7 @@ func Contexter() macaron.Handler {
 		ctx.Data["Link"] = link
 
 		// Pongo2.
+		ctx.Data["AppName"] = setting.AppName
 		ctx.Data["AppVer"] = setting.AppVer
 
 		c.Map(ctx)

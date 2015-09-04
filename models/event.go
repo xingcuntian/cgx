@@ -31,6 +31,15 @@ import (
 	"github.com/Unknwon/cgx/modules/setting"
 )
 
+type Target struct {
+	Name   string
+	Branch string
+	setting.Target
+	LastBuild time.Time
+}
+
+var Targets []*Target
+
 func init() {
 	zip.Verbose = false
 
@@ -39,6 +48,19 @@ func init() {
 			e.Build()
 		}
 	}()
+
+	Targets = make([]*Target, 0, len(setting.Branches)*len(setting.Targets))
+	for _, branch := range setting.Branches {
+		for _, target := range setting.Targets {
+			t := &Target{
+				Name: path.Base(setting.Repository.ImportPath) + "_" +
+					targetString(branch, target.GOOS, target.GOARCH, target.GOARM),
+				Branch: branch,
+			}
+			t.Target = target
+			Targets = append(Targets, t)
+		}
+	}
 }
 
 // Event represents a build event.
@@ -59,6 +81,18 @@ func (e *Event) setError(errmsg string) {
 }
 
 var buildQueue = make(chan *Event, 100)
+
+func targetString(ref, goos, goarch, goarm string) string {
+	str := fmt.Sprintf("%s_%s_%s", ref, goos, goarch)
+	if len(goarm) > 0 {
+		str += "_arm" + com.ToStr(goarm)
+	}
+	return str
+}
+
+func (e *Event) targetString(target setting.Target) string {
+	return targetString(e.Ref, target.GOOS, target.GOARCH, target.GOARM)
+}
 
 func (e *Event) packTarget(srcPath, name, destDir string, target setting.Target) (err error) {
 	binName := name
@@ -100,14 +134,6 @@ func (e *Event) packTarget(srcPath, name, destDir string, target setting.Target)
 	return nil
 }
 
-func (e *Event) targetString(target setting.Target) string {
-	str := fmt.Sprintf("%s_%s_%s", e.Ref, target.GOOS, target.GOARCH)
-	if len(target.GOARM) > 0 {
-		str += "_arm" + com.ToStr(target.GOARM)
-	}
-	return str
-}
-
 func (e *Event) Build() {
 	defer func() {
 		log.Debug("Build finished: %s", e.Ref)
@@ -122,6 +148,7 @@ func (e *Event) Build() {
 
 	defer os.RemoveAll(fullLocalPath)
 	defer os.RemoveAll(zipPath)
+	defer os.RemoveAll(setting.GOPATH)
 
 	log.Debug("Fetching archive: %s", archiveURL)
 	if err := com.HttpGetToFile(http.DefaultClient, archiveURL, nil, zipPath); err != nil {
@@ -213,6 +240,14 @@ func (e *Event) Build() {
 		if err = e.packTarget(srcPath, name, setting.ArchivePath, target); err != nil {
 			e.setError(fmt.Sprintf("Event.Build.packTarget: %v", err))
 			return
+		}
+
+		targetName := name + "_" + e.targetString(target)
+		for i := range Targets {
+			if Targets[i].Name == targetName {
+				Targets[i].LastBuild = time.Now()
+				break
+			}
 		}
 	}
 

@@ -23,10 +23,11 @@ import (
 	"github.com/Unknwon/com"
 	"github.com/Unknwon/log"
 	"github.com/Unknwon/macaron"
+	"github.com/macaron-contrib/pongo2"
 
+	"github.com/Unknwon/cgx/models"
 	"github.com/Unknwon/cgx/modules/middleware"
 	"github.com/Unknwon/cgx/modules/setting"
-	"github.com/Unknwon/cgx/routers"
 )
 
 const APP_VER = "0.1.0.0903"
@@ -38,16 +39,31 @@ func main() {
 	log.Info("Run Mode: %s", strings.Title(macaron.Env))
 
 	m := macaron.Classic()
-	m.Use(macaron.Static("data/archive", macaron.StaticOptions{
+	m.Use(macaron.Static(setting.ArchivePath, macaron.StaticOptions{
 		Prefix: "/archive",
 	}))
-	m.Use(macaron.Renderer())
+	m.Use(pongo2.Pongoer())
 	m.Use(middleware.Contexter())
 
+	m.Get("/", func(ctx *middleware.Context) {
+		ctx.Data["Targets"] = models.Targets
+		ctx.HTML(200, "home")
+	})
 	if setting.Webhook.Mode == "test" {
-		m.Get("/hook", routers.TestHook)
+		m.Get("/hook", func(ctx *middleware.Context) {
+			if err := models.Build(ctx.Query("ref")); err != nil {
+				ctx.JSON(500, map[string]interface{}{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			ctx.Status(200)
+		})
 	} else {
-		m.Post("/hook", routers.Hook)
+		m.Post("/hook", func(ctx *middleware.Context) {
+
+		})
 	}
 
 	listenAddr := "0.0.0.0:" + com.ToStr(setting.HTTPPort)

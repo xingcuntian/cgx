@@ -47,6 +47,8 @@ var (
 		Mode string
 	}
 
+	Branches []string
+
 	Targets []Target
 
 	Resources []string
@@ -88,6 +90,12 @@ func init() {
 
 	sec = Cfg.Section("webhook")
 	Webhook.Mode = sec.Key("MODE").In("test", []string{"test", "travis", "github"})
+
+	branchesInfo := Cfg.Section("branches").Keys()
+	Branches = make([]string, len(branchesInfo))
+	for i := range branchesInfo {
+		Branches[i] = branchesInfo[i].String()
+	}
 
 	targetsInfo := Cfg.Section("targets").Keys()
 	Targets = make([]Target, len(targetsInfo))
