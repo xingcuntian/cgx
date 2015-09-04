@@ -29,7 +29,7 @@ import (
 	"github.com/Unknwon/cgx/routers"
 )
 
-const APP_VER = "0.1.0.0821"
+const APP_VER = "0.1.0.0903"
 
 func main() {
 	setting.AppVer = APP_VER

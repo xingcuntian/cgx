@@ -154,7 +154,7 @@ func (e *Event) Build() {
 
 		dirName := ""
 		for _, d := range dirs {
-			if !strings.HasPrefix(d.Name(), name) || dirName == name {
+			if !strings.HasPrefix(d.Name(), name+"-") {
 				continue
 			}
 			dirName = d.Name()
