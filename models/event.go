@@ -180,7 +180,6 @@ func (e *Event) Build() {
 		}, os.Environ()...)
 		tags := setting.Cfg.Section("tags." + target.GOOS).Key("TAGS").MustString("")
 
-		bufOut := new(bytes.Buffer)
 		bufErr := new(bytes.Buffer)
 
 		log.Debug("Getting dependencies: %s", e.targetString(target))
@@ -188,30 +187,28 @@ func (e *Event) Build() {
 		cmd.Env = envs
 
 		cmd.Dir = srcPath
-		cmd.Stdout = bufOut
+		cmd.Stdout = os.Stdout
 		cmd.Stderr = bufErr
 
 		if err = cmd.Run(); err != nil {
-			fmt.Println(bufOut.String(), bufErr.String())
+			fmt.Println(bufErr.String())
 			e.setError(fmt.Sprintf("Event.Build.(get dependencies): %s", bufErr.String()))
 			return
 		}
-		bufOut.Reset()
 
 		log.Debug("Building target: %s", e.targetString(target))
 		cmd = exec.Command("go", "build", "-v", "-tags", tags)
 		cmd.Env = envs
 
 		cmd.Dir = srcPath
-		cmd.Stdout = bufOut
+		cmd.Stdout = os.Stdout
 		cmd.Stderr = bufErr
 
 		if err = cmd.Run(); err != nil {
-			fmt.Println(bufOut.String(), bufErr.String())
+			fmt.Println(bufErr.String())
 			e.setError(fmt.Sprintf("Event.Build.(build target): %s", bufErr.String()))
 			return
 		}
-		bufOut.Reset()
 
 		if err = e.packTarget(srcPath, name, setting.ArchivePath, target); err != nil {
 			e.setError(fmt.Sprintf("Event.Build.packTarget: %v", err))
@@ -227,6 +224,10 @@ func (e *Event) Build() {
 
 // Build creates and starts a build event.
 func Build(ref string) error {
+	if len(ref) == 0 {
+		return fmt.Errorf("empty ref")
+	}
+
 	event := &Event{
 		Ref: ref,
 	}
