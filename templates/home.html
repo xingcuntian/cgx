@@ -28,7 +28,7 @@
 				      <td>{{target.GOOS}}</td>
 				      <td>{{target.GOARCH}}</td>
 				      <td>{% if target.GOARM %}{{target.GOARM}}{% else %}default{% endif %}</td>
-				      <td>{% if target.LastBuild.Year > 1 %}{{target.LastBuild}}{% else %}N/A{% endif %}</td>
+				      <td>{% if target.LastBuild.Year > 1 %}{{target.LastBuild.Format("2006-01-02 15:04:05 -0700 MST")}}{% else %}N/A{% endif %}</td>
 				      <td><a href="/archive/{{target.Name}}.zip">Download</a></td>
 				    </tr>
 				  	{% endfor %}

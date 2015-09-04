@@ -40,7 +40,6 @@ var (
 
 	Repository struct {
 		ImportPath string
-		ArchiveURL string
 	}
 
 	Webhook struct {
@@ -86,7 +85,6 @@ func init() {
 
 	sec := Cfg.Section("repository")
 	Repository.ImportPath = sec.Key("IMPORT_PATH").MustString("")
-	Repository.ArchiveURL = sec.Key("ARCHIVE_URL").MustString("")
 
 	sec = Cfg.Section("webhook")
 	Webhook.Mode = sec.Key("MODE").In("test", []string{"test", "travis", "github"})

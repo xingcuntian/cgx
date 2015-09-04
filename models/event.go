@@ -17,11 +17,9 @@ package models
 import (
 	"bytes"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/Unknwon/cae/zip"
@@ -140,65 +138,14 @@ func (e *Event) Build() {
 	}()
 
 	// Fetch archive for reference.
-	archiveURL := com.Expand(setting.Repository.ArchiveURL, map[string]string{"ref": e.Ref})
 	localPath := path.Join(setting.GOPATHSrc, path.Dir(setting.Repository.ImportPath))
 	name := path.Base(setting.Repository.ImportPath)
 	fullLocalPath := path.Join(localPath, name)
-	zipPath := path.Join(localPath, name) + ".zip"
 
-	defer os.RemoveAll(fullLocalPath)
-	defer os.RemoveAll(zipPath)
-	defer os.RemoveAll(setting.GOPATH)
-
-	log.Debug("Fetching archive: %s", archiveURL)
-	if err := com.HttpGetToFile(http.DefaultClient, archiveURL, nil, zipPath); err != nil {
-		e.setError(fmt.Sprintf("Event.Build.HttpGetToFile: %v", err))
-		return
-	}
+	defer os.RemoveAll(path.Join(setting.GOPATH, "bin"))
 
 	// Start building targets.
 	for _, target := range setting.Targets {
-		os.RemoveAll(fullLocalPath)
-
-		if err := zip.ExtractTo(zipPath, localPath); err != nil {
-			e.setError(fmt.Sprintf("Event.Build.ExtractTo: %v", err))
-			return
-		}
-
-		// Rename directory and move files to designed path.
-		dir, err := os.Open(localPath)
-		if err != nil {
-			e.setError(fmt.Sprintf("Event.Build.(open local path): %v", err))
-			return
-		}
-		defer dir.Close()
-
-		dirs, err := dir.Readdir(0)
-		if err != nil {
-			e.setError(fmt.Sprintf("Event.Build.(read local path info): %v", err))
-			return
-		}
-
-		dirName := ""
-		for _, d := range dirs {
-			if !strings.HasPrefix(d.Name(), name+"-") {
-				continue
-			}
-			dirName = d.Name()
-			break
-		}
-		if len(dirName) == 0 {
-			e.setError(fmt.Sprintf("Event.Build.(read local path info): local path does not contain expected file"))
-			return
-		}
-		fmt.Println(dirName)
-
-		srcPath := path.Join(localPath, name)
-		if err = os.Rename(path.Join(localPath, dirName), srcPath); err != nil {
-			e.setError(fmt.Sprintf("Event.Build.Rename: %v", err))
-			return
-		}
-
 		envs := append([]string{
 			"GOPATH=" + setting.GOPATH,
 			"GOOS=" + target.GOOS,
@@ -210,34 +157,44 @@ func (e *Event) Build() {
 		bufErr := new(bytes.Buffer)
 
 		log.Debug("Getting dependencies: %s", e.targetString(target))
-		cmd := exec.Command("go", "get", "-v", "-tags", tags)
+		cmd := exec.Command("go", "get", "-v", "-u", "-tags", tags, setting.Repository.ImportPath)
 		cmd.Env = envs
-
-		cmd.Dir = srcPath
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = bufErr
 
-		if err = cmd.Run(); err != nil {
+		if err := cmd.Run(); err != nil {
 			fmt.Println(bufErr.String())
 			e.setError(fmt.Sprintf("Event.Build.(get dependencies): %s", bufErr.String()))
+			return
+		}
+
+		log.Debug("Checking out branch: %s", e.Ref)
+		cmd = exec.Command("git", "checkout", e.Ref)
+		cmd.Env = envs
+		cmd.Dir = fullLocalPath
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = bufErr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Println(bufErr.String())
+			e.setError(fmt.Sprintf("Event.Build.(checkout branch): %s", bufErr.String()))
 			return
 		}
 
 		log.Debug("Building target: %s", e.targetString(target))
 		cmd = exec.Command("go", "build", "-v", "-tags", tags)
 		cmd.Env = envs
-
-		cmd.Dir = srcPath
+		cmd.Dir = fullLocalPath
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = bufErr
 
-		if err = cmd.Run(); err != nil {
+		if err := cmd.Run(); err != nil {
 			fmt.Println(bufErr.String())
 			e.setError(fmt.Sprintf("Event.Build.(build target): %s", bufErr.String()))
 			return
 		}
 
-		if err = e.packTarget(srcPath, name, setting.ArchivePath, target); err != nil {
+		if err := e.packTarget(fullLocalPath, name, setting.ArchivePath, target); err != nil {
 			e.setError(fmt.Sprintf("Event.Build.packTarget: %v", err))
 			return
 		}
